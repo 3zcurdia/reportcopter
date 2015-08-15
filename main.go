@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/russross/blackfriday"
 )
 
 // ChangeLog represents a collection of changes between versions
@@ -65,15 +68,43 @@ func fetchChanges(releasePattern string) []ChangeLog {
 			panic(err)
 		}
 		changeLogs = append(changeLogs, ChangeLog{NameTags: diff, Commits: data})
-		// fmt.Println(data)
 	}
 
 	return changeLogs
 }
 
+func (c *CommitMessage) toMarkdown(originURL string) string {
+	space := regexp.MustCompile(`-`)
+	commitURL := fmt.Sprintf("%vcommit/%v", originURL, c.Commit)
+	return fmt.Sprintf("* [%v](%v) %v [%v](mailto:%v)\n", c.ShortCommit, commitURL, space.ReplaceAllString(c.Message, " "), c.Author, c.Email)
+}
+
 func main() {
+	originURL, _ := exec.Command("git", "config", "--get", "remote.origin.url").Output()
+	re := regexp.MustCompile(`:`)
+	originURL = []byte(re.ReplaceAllString(string(originURL), `/`))
+	re = regexp.MustCompile(`\.git\n$`)
+	originURL = []byte(re.ReplaceAllString(string(originURL), `/`))
+	re = regexp.MustCompile(`^git@`)
+	originURL = []byte(re.ReplaceAllString(string(originURL), `https://`))
+
 	releasePattern := `v[\d{1,4}\.]{1,}`
 	// releasePattern := `release-v?[\d{1,4}\.]{1,}`
 	changeLog := fetchChanges(releasePattern)
-	fmt.Println(changeLog)
+	fmt.Println(changeLog) // json format
+
+	var mdBuffer bytes.Buffer
+	mdBuffer.WriteString("# Changelog\n")
+
+	for _, change := range changeLog {
+		mdBuffer.WriteString(fmt.Sprintf("\n## %v \n\n", change.NameTags))
+		for _, commit := range change.Commits {
+			mdBuffer.WriteString(commit.toMarkdown(string(originURL)))
+		}
+	}
+	fmt.Println(mdBuffer.String())
+
+	html := blackfriday.MarkdownCommon([]byte(mdBuffer.String()))
+
+	fmt.Println(string(html))
 }
