@@ -7,9 +7,22 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"text/template"
 
 	"github.com/russross/blackfriday"
 )
+
+const layout = `
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Changelog</title>
+  </head>
+  <body>
+	  {{.Content}}
+	</body>
+</html>
+`
 
 // ChangeLog represents a collection of changes between versions
 type ChangeLog struct {
@@ -19,12 +32,27 @@ type ChangeLog struct {
 
 // CommitMessage contains the commit information
 type CommitMessage struct {
-	ShortCommit string
-	Commit      string
-	Author      string
-	Email       string
-	Date        string
-	Message     string
+	ShortCommit string `json:"shortcommit"`
+	Commit      string `json:"commit"`
+	Author      string `json:"author"`
+	Email       string `json:"email"`
+	Date        string `json:"date"`
+	Message     string `json:"message"`
+}
+
+// Template for html format
+type Template struct {
+	Content string
+}
+
+// Report full report structure
+type Report struct {
+	pattern   string
+	originURL string
+	ChangeLog []ChangeLog
+	JSON      string
+	Markdown  string
+	HTML      string
 }
 
 func fetchTags(releasePattern string) []string {
@@ -79,7 +107,7 @@ func (c *CommitMessage) toMarkdown(originURL string) string {
 	return fmt.Sprintf("* [%v](%v) %v [%v](mailto:%v)\n", c.ShortCommit, commitURL, space.ReplaceAllString(c.Message, " "), c.Author, c.Email)
 }
 
-func main() {
+func fetchProjectURL() string {
 	originURL, _ := exec.Command("git", "config", "--get", "remote.origin.url").Output()
 	re := regexp.MustCompile(`:`)
 	originURL = []byte(re.ReplaceAllString(string(originURL), `/`))
@@ -88,23 +116,58 @@ func main() {
 	re = regexp.MustCompile(`^git@`)
 	originURL = []byte(re.ReplaceAllString(string(originURL), `https://`))
 
-	releasePattern := `v[\d{1,4}\.]{1,}`
-	// releasePattern := `release-v?[\d{1,4}\.]{1,}`
-	changeLog := fetchChanges(releasePattern)
-	fmt.Println(changeLog) // json format
+	return string(originURL)
+}
 
+func buildReport(releasePattern string) Report {
+	report := Report{pattern: releasePattern, originURL: fetchProjectURL()}
+	report.ChangeLog = fetchChanges(releasePattern)
+
+	byteJSON, _ := json.Marshal(report.ChangeLog)
+	report.JSON = string(byteJSON)
+
+	return report
+}
+
+func (r *Report) getMarkdown() string {
+	if len(r.Markdown) > 0 {
+		return r.Markdown
+	}
 	var mdBuffer bytes.Buffer
 	mdBuffer.WriteString("# Changelog\n")
 
-	for _, change := range changeLog {
+	for _, change := range r.ChangeLog {
 		mdBuffer.WriteString(fmt.Sprintf("\n## %v \n\n", change.NameTags))
 		for _, commit := range change.Commits {
-			mdBuffer.WriteString(commit.toMarkdown(string(originURL)))
+			mdBuffer.WriteString(commit.toMarkdown(string(r.originURL)))
 		}
 	}
-	fmt.Println(mdBuffer.String())
+	r.Markdown = mdBuffer.String()
+	return r.Markdown
+}
 
-	html := blackfriday.MarkdownCommon([]byte(mdBuffer.String()))
+func (r *Report) getHTML() string {
+	if len(r.HTML) > 0 {
+		return r.HTML
+	}
+	out := bytes.NewBuffer(nil)
 
-	fmt.Println(string(html))
+	html := blackfriday.MarkdownCommon([]byte(r.getMarkdown()))
+
+	t := template.Must(template.New("layout").Parse(layout))
+	err := t.Execute(out, Template{Content: string(html)})
+	if err != nil {
+		panic(err)
+	}
+	r.HTML = out.String()
+	return r.HTML
+}
+
+func main() {
+	releasePattern := `v[\d{1,4}\.]{1,}`
+	// releasePattern := `release-v?[\d{1,4}\.]{1,}`
+	report := buildReport(releasePattern)
+	fmt.Println(report.JSON)
+	fmt.Println(report.getMarkdown())
+	fmt.Print(report.getHTML())
 }
