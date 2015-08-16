@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 	"text/template"
 
+	"github.com/codegangsta/cli"
 	"github.com/russross/blackfriday"
 )
 
@@ -164,10 +166,34 @@ func (r *Report) getHTML() string {
 }
 
 func main() {
-	releasePattern := `v[\d{1,4}\.]{1,}`
-	// releasePattern := `release-v?[\d{1,4}\.]{1,}`
-	report := buildReport(releasePattern)
-	fmt.Println(report.JSON)
-	fmt.Println(report.getMarkdown())
-	fmt.Print(report.getHTML())
+	app := cli.NewApp()
+	app.Name = "Changes reporter"
+	app.Usage = "Generate changelog report from git commits and tag releases"
+	app.Version = "0.0.2"
+	app.Author = "Luis Ezcurdia"
+	app.Email = "ing.ezcurdia@gmail.com"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "pattern, p",
+			Value: `v[\d{1,4}\.]{1,}`,
+			Usage: "Regular expresion for release tags",
+		},
+		cli.StringFlag{
+			Name:  "format, f",
+			Value: "markdown",
+			Usage: "Output format for report",
+		},
+	}
+	app.Action = func(c *cli.Context) {
+		report := buildReport(c.String("pattern"))
+		switch strings.ToLower(c.String("format")) {
+		case "json":
+			fmt.Println(report.JSON)
+		case "html":
+			fmt.Print(report.getHTML())
+		default:
+			fmt.Println(report.getMarkdown())
+		}
+	}
+	app.Run(os.Args)
 }
