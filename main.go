@@ -51,6 +51,8 @@ type Template struct {
 type Report struct {
 	pattern   string
 	originURL string
+	commitON  bool
+	authorON  bool
 	ChangeLog []ChangeLog
 	JSON      string
 	Markdown  string
@@ -103,10 +105,16 @@ func fetchChanges(releasePattern string) []ChangeLog {
 	return changeLogs
 }
 
-func (c *CommitMessage) toMarkdown(originURL string) string {
+func (c *CommitMessage) toMarkdown(originURL string, commitON, authorON bool) string {
 	space := regexp.MustCompile(`-`)
-	commitURL := fmt.Sprintf("%vcommit/%v", originURL, c.Commit)
-	return fmt.Sprintf("* [%v](%v) %v [%v](mailto:%v)\n", c.ShortCommit, commitURL, space.ReplaceAllString(c.Message, " "), c.Author, c.Email)
+	var commitLink, authorLink string
+	if commitON {
+		commitLink = fmt.Sprintf("[%v](%vcommit/%v)", c.ShortCommit, originURL, c.Commit)
+	}
+	if authorON {
+		authorLink = fmt.Sprintf("[%v](mailto:%v)", c.Author, c.Email)
+	}
+	return fmt.Sprintf("* %v %v %v\n", commitLink, space.ReplaceAllString(c.Message, " "), authorLink)
 }
 
 func fetchProjectURL() string {
@@ -121,8 +129,13 @@ func fetchProjectURL() string {
 	return string(originURL)
 }
 
-func buildReport(releasePattern string) Report {
-	report := Report{pattern: releasePattern, originURL: fetchProjectURL()}
+func buildReport(releasePattern string, commitLinksON, authorLinksON bool) Report {
+	report := Report{
+		pattern:   releasePattern,
+		originURL: fetchProjectURL(),
+		commitON:  commitLinksON,
+		authorON:  authorLinksON,
+	}
 	report.ChangeLog = fetchChanges(releasePattern)
 
 	byteJSON, _ := json.Marshal(report.ChangeLog)
@@ -141,7 +154,7 @@ func (r *Report) getMarkdown() string {
 	for _, change := range r.ChangeLog {
 		mdBuffer.WriteString(fmt.Sprintf("\n## %v \n\n", change.NameTags))
 		for _, commit := range change.Commits {
-			mdBuffer.WriteString(commit.toMarkdown(string(r.originURL)))
+			mdBuffer.WriteString(commit.toMarkdown(string(r.originURL), r.commitON, r.authorON))
 		}
 	}
 	r.Markdown = mdBuffer.String()
@@ -183,9 +196,30 @@ func main() {
 			Value: "markdown",
 			Usage: "Output format for report",
 		},
+		cli.StringFlag{
+			Name:  "no-commit",
+			Value: "false",
+			Usage: "Omit commit links on markdown and HTML reports",
+		},
+		cli.StringFlag{
+			Name:  "no-author",
+			Value: "false",
+			Usage: "Omit author links on markdown and HTML reports",
+		},
+		cli.StringFlag{
+			Name:  "only-message",
+			Value: "false",
+			Usage: "Only show commit messages on markdown and HTML reports",
+		},
 	}
 	app.Action = func(c *cli.Context) {
-		report := buildReport(c.String("pattern"))
+		commitLinksON := strings.ToLower(c.String("no-commit")) == "false"
+		authorLinksON := strings.ToLower(c.String("no-author")) == "false"
+		if strings.ToLower(c.String("only-message")) != "false" {
+			commitLinksON = false
+			authorLinksON = false
+		}
+		report := buildReport(c.String("pattern"), commitLinksON, authorLinksON)
 		switch strings.ToLower(c.String("format")) {
 		case "json":
 			fmt.Println(report.JSON)
