@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -77,13 +78,16 @@ func fetchTags(releasePattern string) []string {
 	return tags
 }
 
-func fetchChanges(releasePattern string) []ChangeLog {
+func fetchChanges(releasePattern string, limit int) []ChangeLog {
 	var changeLogs []ChangeLog
 	tags := fetchTags(releasePattern)
 
 	var diffs []string
 	for i := 0; i < len(tags)-1; i++ {
 		diffs = append(diffs, fmt.Sprintf("%v..%v", tags[i+1], tags[i]))
+		if len(diffs) >= limit {
+			break
+		}
 	}
 
 	format := "--pretty=format:{\"shortcommit\":\"%h\", \"commit\":\"%H\", \"author\":\"%an\", \"email\":\"%ae\", \"date\":\"%ad\", \"message\":\"%f\"},"
@@ -129,14 +133,14 @@ func fetchProjectURL() string {
 	return string(originURL)
 }
 
-func buildReport(releasePattern string, commitLinksON, authorLinksON bool) Report {
+func buildReport(releasePattern string, commitLinksON, authorLinksON bool, limit int) Report {
 	report := Report{
 		pattern:   releasePattern,
 		originURL: fetchProjectURL(),
 		commitON:  commitLinksON,
 		authorON:  authorLinksON,
 	}
-	report.ChangeLog = fetchChanges(releasePattern)
+	report.ChangeLog = fetchChanges(releasePattern, limit)
 
 	byteJSON, _ := json.Marshal(report.ChangeLog)
 	report.JSON = string(byteJSON)
@@ -197,6 +201,11 @@ func main() {
 			Usage: "Output format for report",
 		},
 		cli.StringFlag{
+			Name:  "limit, l",
+			Value: "500",
+			Usage: "Limit the report to a determinated number of versions",
+		},
+		cli.StringFlag{
 			Name:  "no-commit",
 			Value: "false",
 			Usage: "Omit commit links on markdown and HTML reports",
@@ -213,13 +222,14 @@ func main() {
 		},
 	}
 	app.Action = func(c *cli.Context) {
+		limit, _ := strconv.Atoi(c.String("limit"))
 		commitLinksON := strings.ToLower(c.String("no-commit")) == "false"
 		authorLinksON := strings.ToLower(c.String("no-author")) == "false"
 		if strings.ToLower(c.String("only-message")) != "false" {
 			commitLinksON = false
 			authorLinksON = false
 		}
-		report := buildReport(c.String("pattern"), commitLinksON, authorLinksON)
+		report := buildReport(c.String("pattern"), commitLinksON, authorLinksON, limit)
 		switch strings.ToLower(c.String("format")) {
 		case "json":
 			fmt.Println(report.JSON)

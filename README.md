@@ -1,8 +1,8 @@
-# changes-reporter
+# reportcopter
 
 Why create release changes manualy when you have a well documented control version?
-This tool generate changelog reports based on ```git-log``` and the difference between release tags. 
-If you want to see how the output looks, check the changelog from this project [here](./changelog.md) 
+This tool generate changelog reports based on ```git-log``` and the difference between release tags.
+If you want to see how the output looks, check the changelog from this project [here](./changelog.md)
 
 ## Features
 
@@ -16,15 +16,15 @@ If you want to see how the output looks, check the changelog from this project [
 
 Download the binaries or install via go
 
-    go get github.com/3zcurdia/changes-reporter
+    go get github.com/3zcurdia/reporcopter
 
 ## Usage
 
-    $ changes-reporter >> changelog.md
+    $ reporcopter >> changelog.md
 
 ### Options
 
-    changes-reporter [global options] command [command options] [arguments...]
+    reporcopter [global options] command [command options] [arguments...]
 
     COMMANDS:
        help, h  Shows a list of commands or help for one command
