@@ -99,11 +99,11 @@ func fetchChanges(releasePattern string, limit int) []ChangeLog {
 	for _, diff := range diffs {
 		out, _ = exec.Command("git", "log", format, diff).Output()
 		outs = fmt.Sprintf("[%v]", re.ReplaceAllString(string(out), ""))
-		// fmt.Printf("%v\n", outs)
 		if err := json.Unmarshal([]byte(outs), &data); err != nil {
 			panic(err)
 		}
 		changeLogs = append(changeLogs, ChangeLog{NameTags: diff, Commits: data})
+		data = nil
 	}
 
 	return changeLogs
@@ -186,7 +186,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Changes reporter"
 	app.Usage = "Generate changelog report from git commits and tag releases"
-	app.Version = "0.0.2"
+	app.Version = "0.0.3"
 	app.Author = "Luis Ezcurdia"
 	app.Email = "ing.ezcurdia@gmail.com"
 	app.Flags = []cli.Flag{
