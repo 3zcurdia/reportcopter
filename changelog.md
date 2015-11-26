@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.0.3..v0.0.4 
+
+* [c204653](https://github.com/3zcurdia/reportcopter/commit/c204653788249732653a2da653882d1890e8361f) allow sort by version [Luis Ezcurdia](mailto:ing.ezcurdia@gmail.com)
+* [e28e415](https://github.com/3zcurdia/reportcopter/commit/e28e415be85005eb4433be43dbf3caa5fedb09ed) update changelog [Luis Ezcurdia](mailto:ing.ezcurdia@gmail.com)
+
 ## v0.0.2..v0.0.3 
 
 * [5dcc89f](https://github.com/3zcurdia/reportcopter/commit/5dcc89f55a5e38c8117ca747f452af6f49c6648b) fix duplicated changes [Luis Ezcurdia](mailto:ing.ezcurdia@gmail.com)
