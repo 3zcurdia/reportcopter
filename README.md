@@ -1,4 +1,5 @@
-# reportcopter
+# reportcopter 
+[![wercker status](https://app.wercker.com/status/535b33345ba6504c8ae4701aa354db9d/s "wercker status")](https://app.wercker.com/project/bykey/535b33345ba6504c8ae4701aa354db9d)
 
 Why create release changes manualy when you have a well documented control version?
 This tool generate changelog reports based on ```git-log``` and the difference between release tags.
