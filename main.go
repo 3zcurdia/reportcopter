@@ -7,10 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
 
+	"github.com/3zcurdia/reportcopter/utils"
 	"github.com/codegangsta/cli"
 	"github.com/russross/blackfriday"
 )
@@ -75,6 +77,8 @@ func fetchTags(releasePattern string) []string {
 			tags = append(tags, strings.Replace(match[0][2], ",", "", -1))
 		}
 	}
+	tags = utils.OnlyStable(tags)
+	sort.Sort(utils.ByVersion(tags))
 	return tags
 }
 
@@ -85,7 +89,7 @@ func fetchChanges(releasePattern string, limit int) []ChangeLog {
 	var diffs []string
 	for i := 0; i < len(tags)-1; i++ {
 		diffs = append(diffs, fmt.Sprintf("%v..%v", tags[i+1], tags[i]))
-		if len(diffs) >= limit {
+		if limit > 0 && limit < len(diffs) {
 			break
 		}
 	}
@@ -202,7 +206,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "limit, l",
-			Value: "500",
+			Value: "-1",
 			Usage: "Limit the report to a determinated number of versions",
 		},
 		cli.StringFlag{
