@@ -62,7 +62,7 @@ type Report struct {
 	HTML      string
 }
 
-func fetchTags(releasePattern string) []string {
+func fetchTags(releasePattern string, sortON bool) []string {
 	out, _ := exec.Command("git", "log", "--tags", "--simplify-by-decoration", "--pretty=\"%ai @%d\"").Output()
 	uncuratedTags := strings.Split(string(out), "\n")
 
@@ -77,14 +77,16 @@ func fetchTags(releasePattern string) []string {
 			tags = append(tags, strings.Replace(match[0][2], ",", "", -1))
 		}
 	}
-	tags = utils.OnlyStable(tags)
-	sort.Sort(utils.ByVersion(tags))
+	if sortON {
+		tags = utils.OnlyStable(tags)
+		sort.Sort(utils.ByVersion(tags))
+	}
 	return tags
 }
 
-func fetchChanges(releasePattern string, limit int) []ChangeLog {
+func fetchChanges(releasePattern string, limit int, sortON bool) []ChangeLog {
 	var changeLogs []ChangeLog
-	tags := fetchTags(releasePattern)
+	tags := fetchTags(releasePattern, sortON)
 
 	var diffs []string
 	for i := 0; i < len(tags)-1; i++ {
@@ -137,14 +139,14 @@ func fetchProjectURL() string {
 	return string(originURL)
 }
 
-func buildReport(releasePattern string, commitLinksON, authorLinksON bool, limit int) Report {
+func buildReport(releasePattern string, commitLinksON, authorLinksON bool, limit int, sortON bool) Report {
 	report := Report{
 		pattern:   releasePattern,
 		originURL: fetchProjectURL(),
 		commitON:  commitLinksON,
 		authorON:  authorLinksON,
 	}
-	report.ChangeLog = fetchChanges(releasePattern, limit)
+	report.ChangeLog = fetchChanges(releasePattern, limit, sortON)
 
 	byteJSON, _ := json.Marshal(report.ChangeLog)
 	report.JSON = string(byteJSON)
@@ -210,6 +212,11 @@ func main() {
 			Usage: "Limit the report to a determinated number of versions",
 		},
 		cli.StringFlag{
+			Name:  "sort, s",
+			Value: "version",
+			Usage: "Sort tags by version",
+		},
+		cli.StringFlag{
 			Name:  "no-commit",
 			Value: "false",
 			Usage: "Omit commit links on markdown and HTML reports",
@@ -229,11 +236,12 @@ func main() {
 		limit, _ := strconv.Atoi(c.String("limit"))
 		commitLinksON := strings.ToLower(c.String("no-commit")) == "false"
 		authorLinksON := strings.ToLower(c.String("no-author")) == "false"
+		sortByVersion := strings.ToLower(c.String("historic-sort")) == "version"
 		if strings.ToLower(c.String("only-message")) != "false" {
 			commitLinksON = false
 			authorLinksON = false
 		}
-		report := buildReport(c.String("pattern"), commitLinksON, authorLinksON, limit)
+		report := buildReport(c.String("pattern"), commitLinksON, authorLinksON, limit, sortByVersion)
 		switch strings.ToLower(c.String("format")) {
 		case "json":
 			fmt.Println(report.JSON)
