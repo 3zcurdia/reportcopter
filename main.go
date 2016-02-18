@@ -192,7 +192,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Changes reporter"
 	app.Usage = "Generate changelog report from git commits and tag releases"
-	app.Version = "0.0.3"
+	app.Version = "0.0.4"
 	app.Author = "Luis Ezcurdia"
 	app.Email = "ing.ezcurdia@gmail.com"
 	app.Flags = []cli.Flag{
