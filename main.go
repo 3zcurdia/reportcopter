@@ -13,8 +13,8 @@ import (
 	"text/template"
 
 	"github.com/3zcurdia/reportcopter/utils"
-	"github.com/codegangsta/cli"
 	"github.com/russross/blackfriday"
+	"github.com/urfave/cli"
 )
 
 const layout = `
